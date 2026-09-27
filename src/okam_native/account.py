@@ -78,10 +78,42 @@ class Eye4AccountClient:
         try:
             payload = self._opener(request, HTTP_TIMEOUT_SECONDS)
             result = json.loads(payload.decode("utf-8"))
+
         except AccountError:
             raise
-        except (OSError, UnicodeError, json.JSONDecodeError, urllib.error.URLError):
-            raise AccountError("official account service request failed") from None
+
+        except urllib.error.HTTPError as error:
+            raise AccountError(
+                f"official account service request failed "
+                f"path={path} error_type=HTTPError http_status={error.code}"
+            ) from None
+
+        except urllib.error.URLError as error:
+            reason = getattr(error, "reason", None)
+            reason_type = type(reason).__name__ if reason is not None else "unknown"
+
+            raise AccountError(
+                f"official account service request failed "
+                f"path={path} error_type=URLError reason_type={reason_type}"
+            ) from None
+
+        except json.JSONDecodeError:
+            raise AccountError(
+                f"official account service request failed "
+                f"path={path} error_type=JSONDecodeError"
+            ) from None
+
+        except UnicodeError:
+            raise AccountError(
+                f"official account service request failed "
+                f"path={path} error_type=UnicodeError"
+            ) from None
+
+        except OSError as error:
+            raise AccountError(
+                f"official account service request failed "
+                f"path={path} error_type={type(error).__name__}"
+            ) from None
         return result
 
     def enumerate(self, username: str, password: str) -> list[AccountDevice]:
