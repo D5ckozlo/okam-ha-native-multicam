@@ -169,33 +169,65 @@ def load_options() -> dict[str, object]:
     return value
 
 
-def enumerate_account() -> AccountDevice | None:
+def enumerate_account() -> list[AccountDevice] | None:
+    """Authenticate to O-KAM and return every camera visible on the account."""
+
     options = load_options()
+
     username = options.get("account_username")
     password = options.get("account_password")
-    alias = options.get("camera_id") or "cabin"
-    if not isinstance(username, str) or not username or not isinstance(password, str) or not password:
-        set_status(configuration_required=True)
+
+    if (
+        not isinstance(username, str)
+        or not username
+        or not isinstance(password, str)
+        or not password
+    ):
+        set_status(
+            configuration_required=True,
+            account_ready=False,
+            phase="configuration_required",
+        )
         return None
-    if not isinstance(alias, str):
-        raise RuntimeError("camera alias is invalid")
-    set_status(phase="enumerating_account", configuration_required=False)
+
+    set_status(
+        phase="enumerating_account",
+        configuration_required=False,
+        account_ready=False,
+    )
+
     try:
         devices = Eye4AccountClient().enumerate(username, password)
     finally:
+        # Nie trzymamy danych logowania dłużej niż potrzeba.
         username = ""
         password = ""
-    if len(devices) != 1:
-        raise AccountError("O-KAM account must expose exactly one camera")
+
+    if not devices:
+        raise AccountError("O-KAM account exposes no cameras")
+
+    device_count = len(devices)
+
     set_status(
         account_ready=True,
-        device_count=1,
-        camera_alias=alias,
+        device_count=device_count,
         phase="account_enumerated",
     )
-    print("account_enumerated=true device_count=1", flush=True)
-    return devices[0]
 
+    print(
+        f"account_enumerated=true device_count={device_count}",
+        flush=True,
+    )
+
+    # Logujemy tylko bezpieczne informacje.
+    # Nie pokazujemy UID, haseł ani tokenów.
+    for index, device in enumerate(devices, start=1):
+        print(
+            f"camera_discovered=true index={index} name={device.name!r}",
+            flush=True,
+        )
+
+    return devices
 
 def p2p_environment() -> dict[str, str]:
     environment = os.environ.copy()
@@ -460,8 +492,29 @@ def main() -> int:
     signal.signal(signal.SIGINT, request_stop)
     try:
         load_vendor_runtime()
-        device = enumerate_account()
-        if device is not None:
+        devices = enumerate_account()
+
+        if devices:
+            print(
+                f"multicam_stage1=true total_devices={len(devices)}",
+                flush=True,
+            )
+
+            # ETAP 1:
+            # Konto może już zwracać wiele kamer.
+            #
+            # Sam Bridge nadal jest chwilowo jedno-kamerowy,
+            # dlatego do testu uruchamiamy pierwszą wykrytą kamerę.
+            #
+            # W etapie 2 zastąpimy globalny BRIDGE kolekcją
+            # osobnych CameraBridge dla wszystkich devices.
+            device = devices[0]
+
+            print(
+                f"multicam_stage1_selected=true camera_name={device.name!r}",
+                flush=True,
+            )
+
             run_p2p_acceptance(device)
             configure_bridge(device)
     except Exception as error:
