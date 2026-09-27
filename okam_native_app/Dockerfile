@@ -110,7 +110,7 @@ COPY tools/fetch_official_sdk.py /opt/okam/tools/fetch_official_sdk.py
 COPY docs/vendor-artifacts.json /opt/okam/docs/vendor-artifacts.json
 COPY src/okam_native /opt/okam/okam_native
 COPY native/amd64_connect/okam-amd64-connect /opt/okam/okam-amd64-connect
-COPY okam_native_app/app_entrypoint.py /opt/okam/app_entrypoint.py
+COPY app_entrypoint.py /opt/okam/app_entrypoint.py
 RUN chmod 0755 /opt/okam/okam-amd64-connect
 
 EXPOSE 8099
