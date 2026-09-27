@@ -519,10 +519,24 @@ def main() -> int:
             configure_bridge(device)
     except Exception as error:
         phase = "startup_error" if STATUS["loader_ready"] else "native_loader_error"
-        detail = str(error).replace(" ", "_") if isinstance(error, P2PError) else None
-        set_status(phase=phase, error=type(error).__name__, error_detail=detail)
+
+        if isinstance(error, (P2PError, AccountError)):
+            detail = str(error).replace(" ", "_")
+        else:
+            detail = None
+
+        set_status(
+            phase=phase,
+            error=type(error).__name__,
+            error_detail=detail,
+        )
+
         suffix = f" detail={detail}" if detail else ""
-        print(f"startup_ready=false error={type(error).__name__}{suffix}", flush=True)
+
+        print(
+            f"startup_ready=false error={type(error).__name__}{suffix}",
+            flush=True,
+        )
     stop.wait()
     bridge = get_bridge()
     if bridge is not None:

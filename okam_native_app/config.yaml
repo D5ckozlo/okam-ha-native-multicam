@@ -1,5 +1,5 @@
 name: O-KAM Native Bridge Multicam
-version: 1.3.0-multicam.3
+version: 1.3.0-multicam.4
 slug: okam_native_multicam
 description: Multi-camera native O-KAM bridge for Home Assistant
 url: https://github.com/D5ckozlo/okam-ha-native-multicam
